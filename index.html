@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TSS R2 Pattern creao</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <header>
+      <h1>TSS R2 Pattern creao</h1>
+      <p>Parametric continuous symmetric line generator.</p>
+    </header>
+    
+    <main>
+      <div class="canvas-panel">
+        <div id="svg-container"></div>
+      </div>
+      
+      <aside class="controls-panel" style="overflow-y: auto; max-height: 80vh;">
+        <div class="controls-header">
+          <h2>Shape Parameters</h2>
+        </div>
+        
+        <div class="control-group">
+          <label for="points-slider">Complexity <span id="points-val">6</span></label>
+          <input type="range" id="points-slider" min="2" max="25" value="6">
+        </div>
+        <div class="control-group">
+          <label for="freq-x-slider">Frequency X <span id="freq-x-val">1.2</span></label>
+          <input type="range" id="freq-x-slider" min="0.5" max="4.0" step="0.1" value="1.2">
+        </div>
+        <div class="control-group">
+          <label for="freq-y-slider">Frequency Y <span id="freq-y-val">1.5</span></label>
+          <input type="range" id="freq-y-slider" min="0.5" max="4.0" step="0.1" value="1.5">
+        </div>
+        <div class="control-group">
+          <label for="modulation-slider">Modulation <span id="modulation-val">0.3</span></label>
+          <input type="range" id="modulation-slider" min="0" max="1.0" step="0.05" value="0.3">
+        </div>
+        <div class="control-group">
+          <label for="roundness-slider">Roundness <span id="roundness-val">1.0</span></label>
+          <input type="range" id="roundness-slider" min="0" max="1.0" step="0.05" value="1.0">
+        </div>
+        <div class="control-group">
+          <label for="width-slider">Spread X <span id="width-val">120</span></label>
+          <input type="range" id="width-slider" min="40" max="230" value="120">
+        </div>
+        <div class="control-group">
+          <label for="height-slider">Spread Y <span id="height-val">120</span></label>
+          <input type="range" id="height-slider" min="40" max="230" value="120">
+        </div>
+        
+        <div class="controls-header" style="margin-top:0.5rem;">
+          <h2>Style Parameters</h2>
+        </div>
+        
+        <div class="control-group">
+          <label for="stroke-slider">Base Thickness <span id="stroke-val">4</span></label>
+          <input type="range" id="stroke-slider" min="1" max="25" value="4">
+        </div>
+        <div class="control-group">
+          <label for="taper-slider">Taper <span id="taper-val">0.5</span></label>
+          <input type="range" id="taper-slider" min="0" max="1.0" step="0.05" value="0.5">
+        </div>
+        <div class="control-group">
+          <label for="individuality-slider">Individuality <span id="individuality-val">0.1</span></label>
+          <input type="range" id="individuality-slider" min="0" max="1.0" step="0.05" value="0.1">
+        </div>
+        
+        <div class="actions">
+          <button id="randomize-btn" class="primary-btn">
+            Generate Random
+          </button>
+          <button id="export-btn" class="secondary-btn">
+            Export SVG
+          </button>
+        </div>
+      </aside>
+    </main>
+  </div>
+  <script src="main.js"></script>
+</body>
+</html>
