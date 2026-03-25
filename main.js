@@ -63,21 +63,8 @@ document.addEventListener("DOMContentLoaded", () => {
     allSliders.forEach(bindSlider);
     
     randomizeBtn.addEventListener("click", () => {
-        // Randomize the aesthetic sliders, but leave stroke styles manual.
-        pointsSlider.value = Math.floor(Math.random() * 20 + 3);
-        freqXSlider.value = (0.5 + Math.random() * 3.5).toFixed(1);
-        freqYSlider.value = (0.5 + Math.random() * 3.5).toFixed(1);
-        modulationSlider.value = (Math.random() * 0.8).toFixed(2);
-        roundnessSlider.value = (0.2 + Math.random() * 0.8).toFixed(2);
-        
-        // Slightly constrain random widths
-        widthSlider.value = Math.floor(60 + Math.random() * 140);
-        heightSlider.value = Math.floor(60 + Math.random() * 140);
-        
-        allSliders.forEach(slider => {
-            document.getElementById(slider.id.replace("-slider", "-val")).textContent = slider.value;
-        });
-        
+        // Only change the drawing generation paths by picking new random phases.
+        // Keep all user-adjusted slider parameters exactly the same.
         generateNewPhases();
         drawPaths();
     });
