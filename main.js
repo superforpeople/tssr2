@@ -45,13 +45,22 @@ document.addEventListener("DOMContentLoaded", () => {
     const randomizeBtn = document.getElementById("randomize-btn");
     const exportBtn = document.getElementById("export-btn");
     
+    const animateCheckbox = document.getElementById("animate-checkbox");
+    const durationSlider = document.getElementById("duration-slider");
+    const easingSelect = document.getElementById("easing-select");
+    
     let baseParams = {};
+    let isAnimating = false;
+    let animationStartTime = null;
+    let currentAnimFrame = null;
     
     function bindSlider(slider) {
         const span = document.getElementById(slider.id.replace("-slider", "-val"));
         slider.addEventListener("input", () => {
-            span.textContent = slider.value;
-            drawPaths();
+            if (span) span.textContent = slider.value;
+            if (!isAnimating) {
+                drawPaths(1.0);
+            }
         });
     }
     
@@ -62,11 +71,62 @@ document.addEventListener("DOMContentLoaded", () => {
     
     allSliders.forEach(bindSlider);
     
+    if (animateCheckbox) {
+        animateCheckbox.addEventListener("change", (e) => {
+            isAnimating = e.target.checked;
+            if (isAnimating) {
+                animationStartTime = performance.now();
+                if (!currentAnimFrame) {
+                    currentAnimFrame = requestAnimationFrame(animationLoop);
+                }
+            } else {
+                if (currentAnimFrame) {
+                    cancelAnimationFrame(currentAnimFrame);
+                    currentAnimFrame = null;
+                }
+                drawPaths(1.0);
+            }
+        });
+        
+        durationSlider.addEventListener("input", () => {
+            document.getElementById("duration-val").textContent = durationSlider.value;
+        });
+    }
+
+    function animationLoop(time) {
+        if (!isAnimating) {
+            currentAnimFrame = null;
+            return;
+        }
+        
+        const duration = parseFloat(durationSlider.value) * 1000;
+        let elapsed = (time - animationStartTime) % (duration * 2); 
+        let t = elapsed / duration;
+        let rawProgress = t <= 1 ? t : 2 - t; 
+        
+        let progress = applyEasing(rawProgress, easingSelect.value);
+        
+        drawPaths(progress);
+        currentAnimFrame = requestAnimationFrame(animationLoop);
+    }
+    
+    function applyEasing(t, type) {
+        switch(type) {
+            case "easeIn": return t * t * t; 
+            case "easeOut": return 1 - Math.pow(1 - t, 3);
+            case "easeInOut": return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+            case "linear":
+            default: return t;
+        }
+    }
+    
     randomizeBtn.addEventListener("click", () => {
         // Only change the drawing generation paths by picking new random phases.
         // Keep all user-adjusted slider parameters exactly the same.
         generateNewPhases();
-        drawPaths();
+        if (!isAnimating) {
+            drawPaths(1.0);
+        }
     });
     
     exportBtn.addEventListener("click", exportSVG);
@@ -152,17 +212,20 @@ document.addEventListener("DOMContentLoaded", () => {
         return points;
     }
     
-    function convertToTaperedPath(points, baseThickness, taperRatio) {
-        if (points.length < 2) return "";
-
+    function convertToTaperedPath(points, baseThickness, taperRatio, progress = 1.0) {
+        if (points.length < 2 || progress <= 0) return "";
+        
         const len = points.length;
+        let targetFloatIndex = progress * (len - 1);
+        let maxIndex = Math.floor(targetFloatIndex);
+
         let pathLeft = [];
         let pathRight = [];
         
         let last_nx = 0;
         let last_ny = 0;
 
-        for (let i = 0; i < len; i++) {
+        for (let i = 0; i <= maxIndex; i++) {
             let t = i / (len - 1);
             let sineShape = Math.sin(t * Math.PI); 
             let taperVal = (1.0 - taperRatio) + (sineShape * taperRatio);
@@ -196,6 +259,26 @@ document.addEventListener("DOMContentLoaded", () => {
             pathLeft.push({ x: points[i].x + nx * radius, y: points[i].y + ny * radius });
             pathRight.unshift({ x: points[i].x - nx * radius, y: points[i].y - ny * radius });
         }
+        
+        let remainder = targetFloatIndex - maxIndex;
+        if (remainder > 0 && maxIndex + 1 < len) {
+            let i = maxIndex;
+            let nextI = maxIndex + 1;
+            
+            let t = targetFloatIndex / (len - 1);
+            let sineShape = Math.sin(t * Math.PI); 
+            let taperVal = (1.0 - taperRatio) + (sineShape * taperRatio);
+            let radius = (baseThickness / 2) * taperVal;
+            
+            let interpX = points[i].x + (points[nextI].x - points[i].x) * remainder;
+            let interpY = points[i].y + (points[nextI].y - points[i].y) * remainder;
+            
+            let nx = last_nx;
+            let ny = last_ny;
+            
+            pathLeft.push({ x: interpX + nx * radius, y: interpY + ny * radius });
+            pathRight.unshift({ x: interpX - nx * radius, y: interpY - ny * radius });
+        }
 
         let d = `M ${pathLeft[0].x.toFixed(2)} ${pathLeft[0].y.toFixed(2)}`;
         for (let i = 1; i < pathLeft.length; i++) {
@@ -208,7 +291,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return d;
     }
     
-    function drawPaths() {
+    function drawPaths(progress = 1.0) {
         const w = parseInt(widthSlider.value);
         const h = parseInt(heightSlider.value);
         const thickness = parseFloat(strokeSlider.value);
@@ -218,7 +301,7 @@ document.addEventListener("DOMContentLoaded", () => {
         for (let i = 0; i < 4; i++) {
             let phases = perturb(baseParams, ind);
             let pts = generatePointsSequence(phases, w, h);
-            let d = convertToTaperedPath(pts, thickness, taper);
+            let d = convertToTaperedPath(pts, thickness, taper, progress);
             paths[i].setAttribute("d", d);
         }
     }
