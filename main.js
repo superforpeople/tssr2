@@ -14,6 +14,16 @@ document.addEventListener("DOMContentLoaded", () => {
         "scale(-1, -1)"     
     ];
     
+    // Create Background Image Node
+    const bgImage = document.createElementNS(svgNS, "image");
+    bgImage.setAttribute("x", "-250");
+    bgImage.setAttribute("y", "-250");
+    bgImage.setAttribute("width", "500");
+    bgImage.setAttribute("height", "500");
+    bgImage.setAttribute("preserveAspectRatio", "xMidYMid slice");
+    bgImage.setAttribute("href", "bg.jpg");
+    svg.appendChild(bgImage);
+    
     const paths = [];
     
     transforms.forEach(t => {
@@ -34,12 +44,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const freqYSlider = document.getElementById("freq-y-slider");
     const modulationSlider = document.getElementById("modulation-slider");
     const roundnessSlider = document.getElementById("roundness-slider");
-    
-    const widthSlider = document.getElementById("width-slider");
-    const heightSlider = document.getElementById("height-slider");
+    const noiseSlider = document.getElementById("noise-slider");
+    const waveformSelect = document.getElementById("waveform-select");
     
     const strokeSlider = document.getElementById("stroke-slider");
-    const taperSlider = document.getElementById("taper-slider");
+    const taperMinSlider = document.getElementById("taper-min-slider");
+    const taperMaxSlider = document.getElementById("taper-max-slider");
     const individualitySlider = document.getElementById("individuality-slider");
     
     const randomizeBtn = document.getElementById("randomize-btn");
@@ -49,7 +59,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const durationSlider = document.getElementById("duration-slider");
     const easingSelect = document.getElementById("easing-select");
     
+    const colorPicker = document.getElementById("color-picker");
+    const bgUpload = document.getElementById("bg-upload");
+    
     let baseParams = {};
+    let pathOffsets = [];
     let isAnimating = false;
     let animationStartTime = null;
     let currentAnimFrame = null;
@@ -65,11 +79,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
     const allSliders = [
-        pointsSlider, freqXSlider, freqYSlider, modulationSlider, roundnessSlider,
-        widthSlider, heightSlider, strokeSlider, taperSlider, individualitySlider
+        pointsSlider, freqXSlider, freqYSlider, modulationSlider, roundnessSlider, noiseSlider,
+        strokeSlider, taperMinSlider, taperMaxSlider, individualitySlider
     ];
     
     allSliders.forEach(bindSlider);
+    
+    if (waveformSelect) {
+        waveformSelect.addEventListener("change", () => {
+            if (!isAnimating) drawPaths(1.0);
+        });
+    }
     
     if (animateCheckbox) {
         animateCheckbox.addEventListener("change", (e) => {
@@ -120,6 +140,26 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
     
+    if (colorPicker) {
+        colorPicker.addEventListener("input", (e) => {
+            paths.forEach(p => p.setAttribute("fill", e.target.value));
+        });
+        paths.forEach(p => p.setAttribute("fill", colorPicker.value));
+    }
+
+    if (bgUpload) {
+        bgUpload.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    bgImage.setAttribute("href", event.target.result);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+    
     randomizeBtn.addEventListener("click", () => {
         // Only change the drawing generation paths by picking new random phases.
         // Keep all user-adjusted slider parameters exactly the same.
@@ -141,24 +181,33 @@ document.addEventListener("DOMContentLoaded", () => {
             phaseY1: Math.random() * Math.PI * 2,
             phaseY2: Math.random() * Math.PI * 2,
         };
+        
+        pathOffsets = [];
+        for (let i = 0; i < 4; i++) {
+            pathOffsets.push({
+                fX: Math.random() * 2 - 1,
+                fY: Math.random() * 2 - 1,
+                pX1: Math.random() * 2 - 1,
+                pX2: Math.random() * 2 - 1,
+                pY1: Math.random() * 2 - 1,
+                pY2: Math.random() * 2 - 1,
+            });
+        }
     }
     
-    function perturb(base, ind) {
-        if (ind === 0) return base;
+    function perturb(base, ind, offset) {
+        if (ind === 0 || !offset) return base;
         
         const shiftPhaseAmount = ind * 0.2; 
         const shiftMultAmount = ind * 0.1;
         
-        const shiftPhase = (val) => val + (Math.random() * 2 - 1) * shiftPhaseAmount;
-        const shiftMult = (val) => val + (Math.random() * 2 - 1) * shiftMultAmount * val;
-        
         return {
-            fXMult: shiftMult(base.fXMult),
-            fYMult: shiftMult(base.fYMult),
-            phaseX1: shiftPhase(base.phaseX1),
-            phaseX2: shiftPhase(base.phaseX2),
-            phaseY1: shiftPhase(base.phaseY1),
-            phaseY2: shiftPhase(base.phaseY2)
+            fXMult: base.fXMult + offset.fX * shiftMultAmount * base.fXMult,
+            fYMult: base.fYMult + offset.fY * shiftMultAmount * base.fYMult,
+            phaseX1: base.phaseX1 + offset.pX1 * shiftPhaseAmount,
+            phaseX2: base.phaseX2 + offset.pX2 * shiftPhaseAmount,
+            phaseY1: base.phaseY1 + offset.pY1 * shiftPhaseAmount,
+            phaseY2: base.phaseY2 + offset.pY2 * shiftPhaseAmount
         };
     }
     
@@ -188,6 +237,28 @@ document.addEventListener("DOMContentLoaded", () => {
             return (val < 0 ? -1 : 1) * Math.pow(Math.abs(val), p);
         };
         
+        const waveform = waveformSelect ? waveformSelect.value : "sine";
+        const noiseLevel = noiseSlider ? parseFloat(noiseSlider.value) : 0;
+        
+        const waveFn = (v, isCos) => {
+            let val = isCos ? Math.cos(v) : Math.sin(v);
+            switch(waveform) {
+                case "triangle":
+                    return (2 / Math.PI) * Math.asin(val);
+                case "square":
+                    return (2 / Math.PI) * Math.atan(val * 15);
+                case "bounce":
+                    return Math.abs(val) * 2 - 1;
+                case "harmonic":
+                    // A complex waveform made of multiple harmonics
+                    let val2 = isCos ? Math.cos(v * 3) : Math.sin(v * 3);
+                    return (val + 0.3 * val2) / 1.3;
+                case "sine":
+                default:
+                    return val;
+            }
+        };
+        
         const points = [];
         const samples = 400;
         
@@ -195,14 +266,20 @@ document.addEventListener("DOMContentLoaded", () => {
             let t = (i / (samples - 1)) * maxT;
             
             // X components
-            let nx1 = Math.sin(fX1 * t + phases.phaseX1);
-            let nx2 = Math.sin(fX2 * t + phases.phaseX2);
+            let nx1 = waveFn(fX1 * t + phases.phaseX1, false);
+            let nx2 = waveFn(fX2 * t + phases.phaseX2, false);
             let nx = shapeFn(nx1) * (1 - mod) + shapeFn(nx2) * mod;
             
             // Y components
-            let ny1 = Math.cos(fY1 * t + phases.phaseY1);
-            let ny2 = Math.cos(fY2 * t + phases.phaseY2);
+            let ny1 = waveFn(fY1 * t + phases.phaseY1, true);
+            let ny2 = waveFn(fY2 * t + phases.phaseY2, true);
             let ny = shapeFn(ny1) * (1 - mod) + shapeFn(ny2) * mod;
+            
+            // Appy Noise/Jitter
+            if (noiseLevel > 0) {
+                nx += Math.sin(t * 40 + phases.phaseX1 * 10) * noiseLevel * 0.2;
+                ny += Math.cos(t * 41 + phases.phaseY1 * 10) * noiseLevel * 0.2;
+            }
             
             let x = -halfW + nx * halfW;
             let y = -halfH + ny * halfH;
@@ -212,7 +289,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return points;
     }
     
-    function convertToTaperedPath(points, baseThickness, taperRatio, progress = 1.0) {
+    function convertToTaperedPath(points, baseThickness, taperMin, taperMax, progress = 1.0) {
         if (points.length < 2 || progress <= 0) return "";
         
         const len = points.length;
@@ -224,12 +301,18 @@ document.addEventListener("DOMContentLoaded", () => {
         
         let last_nx = 0;
         let last_ny = 0;
+        
+        let rStart = 0;
+        let rEnd = 0;
 
         for (let i = 0; i <= maxIndex; i++) {
             let t = i / (len - 1);
             let sineShape = Math.sin(t * Math.PI); 
-            let taperVal = (1.0 - taperRatio) + (sineShape * taperRatio);
+            let taperVal = taperMin + sineShape * (taperMax - taperMin);
             let radius = (baseThickness / 2) * taperVal;
+            
+            if (i === 0) rStart = radius;
+            if (i === maxIndex && targetFloatIndex === maxIndex) rEnd = radius;
 
             let dx, dy;
             if (i === 0) {
@@ -267,8 +350,10 @@ document.addEventListener("DOMContentLoaded", () => {
             
             let t = targetFloatIndex / (len - 1);
             let sineShape = Math.sin(t * Math.PI); 
-            let taperVal = (1.0 - taperRatio) + (sineShape * taperRatio);
+            let taperVal = taperMin + sineShape * (taperMax - taperMin);
             let radius = (baseThickness / 2) * taperVal;
+            
+            rEnd = radius;
             
             let interpX = points[i].x + (points[nextI].x - points[i].x) * remainder;
             let interpY = points[i].y + (points[nextI].y - points[i].y) * remainder;
@@ -284,24 +369,41 @@ document.addEventListener("DOMContentLoaded", () => {
         for (let i = 1; i < pathLeft.length; i++) {
             d += ` L ${pathLeft[i].x.toFixed(2)} ${pathLeft[i].y.toFixed(2)}`;
         }
-        for (let i = 0; i < pathRight.length; i++) {
+        
+        // End Cap (rounded)
+        if (rEnd > 0.01) {
+            d += ` A ${rEnd.toFixed(2)} ${rEnd.toFixed(2)} 0 0 0 ${pathRight[0].x.toFixed(2)} ${pathRight[0].y.toFixed(2)}`;
+        } else {
+            d += ` L ${pathRight[0].x.toFixed(2)} ${pathRight[0].y.toFixed(2)}`;
+        }
+
+        for (let i = 1; i < pathRight.length; i++) {
             d += ` L ${pathRight[i].x.toFixed(2)} ${pathRight[i].y.toFixed(2)}`;
         }
-        d += " Z";
+        
+        // Start Cap (rounded)
+        if (rStart > 0.01) {
+            let lastRight = pathRight[pathRight.length - 1];
+            d += ` A ${rStart.toFixed(2)} ${rStart.toFixed(2)} 0 0 0 ${pathLeft[0].x.toFixed(2)} ${pathLeft[0].y.toFixed(2)}`;
+        } else {
+            d += " Z";
+        }
+
         return d;
     }
     
     function drawPaths(progress = 1.0) {
-        const w = parseInt(widthSlider.value);
-        const h = parseInt(heightSlider.value);
+        const w = 230;
+        const h = 230;
         const thickness = parseFloat(strokeSlider.value);
-        const taper = parseFloat(taperSlider.value);
+        const tMin = parseFloat(taperMinSlider.value);
+        const tMax = parseFloat(taperMaxSlider.value);
         const ind = parseFloat(individualitySlider.value);
         
         for (let i = 0; i < 4; i++) {
-            let phases = perturb(baseParams, ind);
+            let phases = perturb(baseParams, ind, pathOffsets[i]);
             let pts = generatePointsSequence(phases, w, h);
-            let d = convertToTaperedPath(pts, thickness, taper, progress);
+            let d = convertToTaperedPath(pts, thickness, tMin, tMax, progress);
             paths[i].setAttribute("d", d);
         }
     }
@@ -313,11 +415,19 @@ document.addEventListener("DOMContentLoaded", () => {
         
         const group = document.createElementNS(svgNS, "g");
         
+        // Include background if present
+        if (bgImage.hasAttribute("href")) {
+            const exportBg = bgImage.cloneNode(true);
+            group.appendChild(exportBg);
+        }
+        
+        const currentColor = colorPicker ? colorPicker.value : "#000000";
+        
         for (let i = 0; i < 4; i++) {
             const newPath = document.createElementNS(svgNS, "path");
             newPath.setAttribute("d", paths[i].getAttribute("d"));
             newPath.setAttribute("transform", paths[i].getAttribute("transform"));
-            newPath.setAttribute("fill", "#000000"); 
+            newPath.setAttribute("fill", currentColor); 
             newPath.setAttribute("stroke", "none");
             group.appendChild(newPath);
         }

@@ -12,7 +12,6 @@
   <div class="app-container">
     <header>
       <h1>TSS R2 Pattern creao 2</h1>
-      <p>Parametric continuous symmetric line generator.</p>
     </header>
 
     <main>
@@ -23,6 +22,18 @@
       <aside class="controls-panel" style="overflow-y: auto; max-height: 80vh;">
         <div class="controls-header">
           <h2>Shape Parameters</h2>
+        </div>
+
+        <div class="control-group">
+          <label for="waveform-select">Wave Type</label>
+          <select id="waveform-select"
+            style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); background: rgba(20,20,20,0.8); color: #fff; margin-top:0.5rem; margin-bottom:0.5rem;">
+            <option value="sine">Sine (Smooth)</option>
+            <option value="triangle">Triangle (Angular)</option>
+            <option value="square">Square (Blocky)</option>
+            <option value="bounce">Bounce (Arched)</option>
+            <option value="harmonic">Harmonic (Complex)</option>
+          </select>
         </div>
 
         <div class="control-group">
@@ -46,12 +57,8 @@
           <input type="range" id="roundness-slider" min="0" max="1.0" step="0.05" value="1.0">
         </div>
         <div class="control-group">
-          <label for="width-slider">Spread X <span id="width-val">120</span></label>
-          <input type="range" id="width-slider" min="40" max="230" value="120">
-        </div>
-        <div class="control-group">
-          <label for="height-slider">Spread Y <span id="height-val">120</span></label>
-          <input type="range" id="height-slider" min="40" max="230" value="120">
+          <label for="noise-slider">Jitter / Noise <span id="noise-val">0</span></label>
+          <input type="range" id="noise-slider" min="0" max="1.0" step="0.05" value="0">
         </div>
 
         <div class="controls-header" style="margin-top:0.5rem;">
@@ -59,16 +66,36 @@
         </div>
 
         <div class="control-group">
-          <label for="stroke-slider">Base Thickness <span id="stroke-val">4</span></label>
-          <input type="range" id="stroke-slider" min="1" max="25" value="4">
+          <label for="stroke-slider">Thickness <span id="stroke-val">4</span></label>
+          <input type="range" id="stroke-slider" min="1" max="50" value="4">
         </div>
         <div class="control-group">
-          <label for="taper-slider">Taper <span id="taper-val">0.5</span></label>
-          <input type="range" id="taper-slider" min="0" max="1.0" step="0.05" value="0.5">
+          <label for="taper-min-slider">Taper Min <span id="taper-min-val">0.1</span></label>
+          <input type="range" id="taper-min-slider" min="0" max="1.0" step="0.05" value="0.1">
+        </div>
+        <div class="control-group">
+          <label for="taper-max-slider">Taper Max <span id="taper-max-val">1.0</span></label>
+          <input type="range" id="taper-max-slider" min="0.1" max="2.0" step="0.05" value="1.0">
         </div>
         <div class="control-group">
           <label for="individuality-slider">Individuality <span id="individuality-val">0.1</span></label>
           <input type="range" id="individuality-slider" min="0" max="1.0" step="0.05" value="0.1">
+        </div>
+
+        <div class="controls-header" style="margin-top:0.5rem;">
+          <h2>Appearance</h2>
+        </div>
+
+        <div class="control-group">
+          <label style="display:flex; justify-content:space-between; align-items:center;">
+            Drawing Color
+            <input type="color" id="color-picker" value="#000000"
+              style="width: 50px; height: 30px; border: none; padding: 0; cursor: pointer; background: transparent;">
+          </label>
+        </div>
+        <div class="control-group">
+          <label for="bg-upload">Background Image</label>
+          <input type="file" id="bg-upload" accept="image/*" style="width: 100%; color: #fff; margin-top: 0.5rem;">
         </div>
 
         <div class="controls-header" style="margin-top:0.5rem;">
